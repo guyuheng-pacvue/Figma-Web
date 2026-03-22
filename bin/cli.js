@@ -1,162 +1,116 @@
 #!/usr/bin/env node
-'use strict';
-
-const fs = require('node:fs');
-const path = require('node:path');
-
-function getArgv() {
-  return process.argv.slice(2);
-}
-
-function parseFlags(argv) {
-  const flags = {};
-  const positionals = [];
-
+ 
+const fs = require("fs")
+const path = require("path")
+ 
+function parseArgs(argv) {
+  const options = {
+    target: process.cwd(),
+    force: false,
+    figmaApiKey: process.env.FIGMA_API_KEY || "",
+    webFetchUrl: "http://127.0.0.1:8080/sse",
+  }
+ 
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--') {
-      positionals.push(...argv.slice(i + 1));
-      break;
+    const arg = argv[i]
+    if (arg === "--target" && argv[i + 1]) {
+      options.target = path.resolve(argv[i + 1]); i++; continue
     }
-    if (!a.startsWith('--')) {
-      positionals.push(a);
-      continue;
+    if (arg === "--figma-api-key" && argv[i + 1]) {
+      options.figmaApiKey = argv[i + 1]; i++; continue
     }
-
-    const eq = a.indexOf('=');
-    if (eq !== -1) {
-      flags[a.slice(2, eq)] = a.slice(eq + 1);
-      continue;
+    if (arg === "--web-fetch-url" && argv[i + 1]) {
+      options.webFetchUrl = argv[i + 1]; i++; continue
     }
-
-    const key = a.slice(2);
-    const next = argv[i + 1];
-    if (next && !next.startsWith('--')) {
-      flags[key] = next;
-      i++;
-    } else {
-      flags[key] = true;
+    if (arg === "--force") {
+      options.force = true; continue
     }
   }
-
-  return { flags, positionals };
+  return options
 }
-
-function printHelp() {
-  const msg = `
-figma-web - 技能模板生成器
-
-用法:
-  figma-web list
-  figma-web new-skill <template> [outputDir] [--name <skillName>] [--description <text>]
-
-例子:
-  figma-web list
-  figma-web new-skill web ./my-skill --name "web" --description "通用 Web 开发技能"
-  figma-web new-skill figma-to-test-page
-`;
-  process.stdout.write(msg.trimStart());
-  process.stdout.write('\n');
+ 
+function ensureDir(dirPath) {
+  fs.mkdirSync(dirPath, { recursive: true })
 }
-
-function ensureDir(p) {
-  fs.mkdirSync(p, { recursive: true });
+function writeJson(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + "\n", "utf8")
 }
-
-function listTemplates(templatesDir) {
-  if (!fs.existsSync(templatesDir)) return [];
-  return fs
-    .readdirSync(templatesDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .sort((a, b) => a.localeCompare(b));
+function readJson(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"))
+  } catch {
+    return null
+  }
 }
-
-function readText(p) {
-  return fs.readFileSync(p, 'utf8');
+function copyFile(src, dest, overwrite) {
+  if (!overwrite && fs.existsSync(dest)) return false
+  ensureDir(path.dirname(dest))
+  fs.copyFileSync(src, dest)
+  return true
 }
-
-function writeText(p, content) {
-  ensureDir(path.dirname(p));
-  fs.writeFileSync(p, content, 'utf8');
-}
-
-function renderTemplate(template, vars) {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, k) => (vars[k] ?? `{{${k}}}`));
-}
-
-function resolveRepoRoot() {
-  return path.resolve(__dirname, '..');
-}
-
+ 
 function main() {
-  const argv = getArgv();
-  const { flags, positionals } = parseFlags(argv);
-
-  const cmd = positionals[0];
-  const repoRoot = resolveRepoRoot();
-  const templatesDir = path.join(repoRoot, 'templates', 'skills');
-
-  if (!cmd || flags.help || cmd === '-h' || cmd === '--help' || cmd === 'help') {
-    printHelp();
-    process.exit(0);
-  }
-
-  if (cmd === 'list') {
-    const templates = listTemplates(templatesDir);
-    if (templates.length === 0) {
-      process.stdout.write(`未找到模板目录: ${templatesDir}\n`);
-      process.exit(1);
+  const args = parseArgs(process.argv.slice(2))
+  const cwd = process.cwd()
+  const baseDir = path.resolve(__dirname, "..")
+  const templateSkillDir = path.join(baseDir, "templates", "skills")
+  const cursorDir = path.join(args.target, ".cursor")
+  const skillsDir = path.join(cursorDir, "skills")
+  ensureDir(skillsDir)
+ 
+  const defaultMcpConfig = {
+    mcpServers: {
+      figma: { url: "https://mcp.figma.com/mcp" },
+      "figma-context": {
+        command: "npx",
+        args: ["-y", "figma-developer-mcp", "--stdio"],
+        env: { FIGMA_API_KEY: args.figmaApiKey || "PLEASE_SET_FIGMA_API_KEY" }
+      },
+      "web-fetch": { url: args.webFetchUrl }
     }
-    process.stdout.write(templates.join('\n'));
-    process.stdout.write('\n');
-    process.exit(0);
   }
-
-  if (cmd === 'new-skill') {
-    const templateName = positionals[1];
-    const outputDirRaw = positionals[2];
-
-    if (!templateName) {
-      process.stderr.write('缺少 <template>。用 `figma-web list` 查看可用模板。\n');
-      process.exit(1);
+ 
+  const mcpFile = path.join(cursorDir, "mcp.json")
+  if (fs.existsSync(mcpFile) && !args.force) {
+    const existing = readJson(mcpFile)
+    if (existing && typeof existing === "object") {
+      writeJson(mcpFile, {
+        ...existing,
+        mcpServers: { ...(existing.mcpServers || {}), ...defaultMcpConfig.mcpServers }
+      })
+      console.log(`merged ${path.relative(cwd, mcpFile)}`)
+    } else {
+      console.log(`skip ${path.relative(cwd, mcpFile)} (invalid JSON, use --force to overwrite)`)
     }
-
-    const templateSkillPath = path.join(templatesDir, templateName, 'SKILL.md');
-    if (!fs.existsSync(templateSkillPath)) {
-      process.stderr.write(`模板不存在: ${templateName}\n`);
-      process.stderr.write('用 `figma-web list` 查看可用模板。\n');
-      process.exit(1);
-    }
-
-    const outputDir = path.resolve(process.cwd(), outputDirRaw || `./${templateName}`);
-    const skillName = typeof flags.name === 'string' ? flags.name : templateName;
-    const description =
-      typeof flags.description === 'string' ? flags.description : '（请填写技能描述）';
-
-    const now = new Date();
-    const vars = {
-      YEAR: String(now.getFullYear()),
-      SKILL_NAME: skillName,
-      SKILL_SLUG: templateName,
-      SKILL_DESCRIPTION: description
-    };
-
-    const src = readText(templateSkillPath);
-    const out = renderTemplate(src, vars);
-
-    ensureDir(outputDir);
-    const outSkillPath = path.join(outputDir, 'SKILL.md');
-    writeText(outSkillPath, out);
-
-    process.stdout.write(`已生成: ${outSkillPath}\n`);
-    process.exit(0);
+  } else {
+    ensureDir(cursorDir)
+    writeJson(mcpFile, defaultMcpConfig)
+    console.log(`wrote ${path.relative(cwd, mcpFile)}`)
   }
-
-  process.stderr.write(`未知命令: ${cmd}\n`);
-  printHelp();
-  process.exit(1);
+ 
+  const skillFiles = [
+    {
+      src: path.join(templateSkillDir, "figma-to-test-page", "SKILL.md"),
+      dest: path.join(skillsDir, "figma-to-test-page", "SKILL.md"),
+    },
+    {
+      src: path.join(templateSkillDir, "web", "SKILL.md"),
+      dest: path.join(skillsDir, "web", "SKILL.md"),
+    },
+  ]
+ 
+  for (const item of skillFiles) {
+    const wrote = copyFile(item.src, item.dest, args.force)
+    console.log(
+      wrote
+        ? `wrote ${path.relative(cwd, item.dest)}`
+        : `skip ${path.relative(cwd, item.dest)} (exists, use --force to overwrite)`
+    )
+  }
+ 
+  if (!args.figmaApiKey) {
+    console.log("\ntip: set FIGMA_API_KEY by --figma-api-key <token> or environment variable FIGMA_API_KEY")
+  }
 }
-
-main();
-
+ 
+main()

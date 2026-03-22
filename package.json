@@ -1,23 +1,21 @@
 {
-  "name": "figma-web",
+  "name": "@guyuheng-pacvue/mcp-skill-bootstrap",
   "version": "0.1.0",
-  "private": true,
-  "description": "Figma 落地前端：技能模板与生成器",
-  "license": "UNLICENSED",
-  "type": "commonjs",
+  "description": "Bootstrap Cursor MCP and skills for web workflows",
+  "license": "MIT",
   "bin": {
-    "figma-web": "bin/cli.js"
-  },
-  "engines": {
-    "node": ">=18"
+    "mcp-skill-bootstrap": "bin/cli.js"
   },
   "files": [
-    "bin/",
-    "templates/",
+    "bin",
+    "templates",
     "README.md"
   ],
-  "scripts": {
-    "cli": "node bin/cli.js",
-    "check:cli": "node -c bin/cli.js"
+  "keywords": ["cursor", "mcp", "skill", "figma", "bootstrap", "web"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=16"
   }
 }
