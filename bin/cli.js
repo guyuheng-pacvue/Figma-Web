@@ -1,8 +1,8 @@
-#!/usr/bin/env node
- 
+
+
 const fs = require("fs")
 const path = require("path")
- 
+
 function parseArgs(argv) {
   const options = {
     target: process.cwd(),
@@ -10,7 +10,7 @@ function parseArgs(argv) {
     figmaApiKey: process.env.FIGMA_API_KEY || "",
     webFetchUrl: "http://127.0.0.1:8080/sse",
   }
- 
+
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === "--target" && argv[i + 1]) {
@@ -28,7 +28,7 @@ function parseArgs(argv) {
   }
   return options
 }
- 
+
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true })
 }
@@ -48,7 +48,7 @@ function copyFile(src, dest, overwrite) {
   fs.copyFileSync(src, dest)
   return true
 }
- 
+
 function main() {
   const args = parseArgs(process.argv.slice(2))
   const cwd = process.cwd()
@@ -57,7 +57,7 @@ function main() {
   const cursorDir = path.join(args.target, ".cursor")
   const skillsDir = path.join(cursorDir, "skills")
   ensureDir(skillsDir)
- 
+
   const defaultMcpConfig = {
     mcpServers: {
       figma: { url: "https://mcp.figma.com/mcp" },
@@ -69,7 +69,7 @@ function main() {
       "web-fetch": { url: args.webFetchUrl }
     }
   }
- 
+
   const mcpFile = path.join(cursorDir, "mcp.json")
   if (fs.existsSync(mcpFile) && !args.force) {
     const existing = readJson(mcpFile)
@@ -87,7 +87,7 @@ function main() {
     writeJson(mcpFile, defaultMcpConfig)
     console.log(`wrote ${path.relative(cwd, mcpFile)}`)
   }
- 
+
   const skillFiles = [
     {
       src: path.join(templateSkillDir, "figma-to-test-page", "SKILL.md"),
@@ -98,7 +98,7 @@ function main() {
       dest: path.join(skillsDir, "web", "SKILL.md"),
     },
   ]
- 
+
   for (const item of skillFiles) {
     const wrote = copyFile(item.src, item.dest, args.force)
     console.log(
@@ -107,10 +107,12 @@ function main() {
         : `skip ${path.relative(cwd, item.dest)} (exists, use --force to overwrite)`
     )
   }
- 
+
   if (!args.figmaApiKey) {
     console.log("\ntip: set FIGMA_API_KEY by --figma-api-key <token> or environment variable FIGMA_API_KEY")
   }
 }
- 
+
 main()
+EOF
+
