@@ -1,0 +1,23 @@
+{
+  "name": "figma-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Figma 落地前端：技能模板与生成器",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "bin": {
+    "figma-web": "bin/cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/",
+    "templates/",
+    "README.md"
+  ],
+  "scripts": {
+    "cli": "node bin/cli.js",
+    "check:cli": "node -c bin/cli.js"
+  }
+}
