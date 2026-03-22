@@ -1,5 +1,5 @@
 {
-  "name": "@guyuheng-pacvue/mcp-skill-bootstrap",
+  "name": "@guyuheng9596/mcp-skill-bootstrap",
   "version": "0.1.0",
   "description": "Bootstrap Cursor MCP and skills for web workflows",
   "license": "MIT",
@@ -11,7 +11,14 @@
     "templates",
     "README.md"
   ],
-  "keywords": ["cursor", "mcp", "skill", "figma", "bootstrap", "web"],
+  "keywords": [
+    "cursor",
+    "mcp",
+    "skill",
+    "figma",
+    "bootstrap",
+    "web"
+  ],
   "publishConfig": {
     "access": "public"
   },
