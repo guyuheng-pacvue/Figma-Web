@@ -1,6 +1,6 @@
 {
   "name": "@guyuheng9596/mcp-skill-bootstrap",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Bootstrap Cursor MCP and skills for web workflows",
   "license": "MIT",
   "bin": {
